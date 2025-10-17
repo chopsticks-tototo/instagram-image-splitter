@@ -4,7 +4,7 @@ import io, zipfile
 
 st.set_page_config(page_title="Instagram用 画像分割ツール", page_icon="🖼️", layout="wide")
 st.title("Instagram用 画像分割ツール")
-st.caption("3分割または6分割を選んでZIPで一括ダウンロードできます。")
+st.caption("3分割または6分割を選び、ZIPで一括ダウンロードできます。")
 
 # 分割関数
 def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
@@ -30,21 +30,24 @@ def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
                 top = r * seg_h
                 bottom = (r + 1) * seg_h if r < 1 else h
                 crop = img.crop((left, top, right, bottom))
+                # 左右だけ余白を追加（上下はなし）
                 bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
                 outs.append(bordered)
 
     return outs
 
-# 画像→バイト列変換
+# 画像をJPEGバイト列へ変換
 def image_to_bytes(img):
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=95)
     return buf.getvalue()
 
-# UI
-uploaded_files = st.file_uploader("📷 画像をアップロード（複数可）",
-                                  type=["jpg", "jpeg", "png", "webp"],
-                                  accept_multiple_files=True)
+# アップロードUI
+uploaded_files = st.file_uploader(
+    "📷 画像をアップロード（複数可：JPG/PNG/WebP）",
+    type=["jpg", "jpeg", "png", "webp"],
+    accept_multiple_files=True
+)
 
 split_mode = st.radio("分割方法を選択", ["横3分割（3x1）", "縦2×横3分割（3x2）"])
 series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
@@ -52,9 +55,8 @@ base1 = st.text_input("左列の数字（半角）", value="1")
 base2 = st.text_input("中列の数字（半角）", value="2")
 base3 = st.text_input("右列の数字（半角）", value="3")
 
-# 実行処理
+# 処理とZIP作成
 if uploaded_files:
-    # ファイル名の数字順でソート
     uploaded_files = sorted(uploaded_files, key=lambda x: int(''.join(filter(str.isdigit, x.name)) or 0))
 
     zip_buffer = io.BytesIO()
@@ -65,17 +67,17 @@ if uploaded_files:
             parts = split_image(img, mode=mode)
             current_series = series_start + i
 
-            # ファイル名付け方を行・列で分ける
-            for idx, im in enumerate(parts):
-                if mode == "3x1":
-                    b = [base1, base2, base3][idx]
-                else:
-                    # 6分割時は左上→右下で通し番号
-                    b = f"{(idx+1)}"
+            if mode == "3x1":
+                # 通常の3分割
+                bases = [base1, base2, base3]
+            else:
+                # 6分割は1〜6で自動ナンバリング
+                bases = [str(n) for n in range(1, 7)]
+
+            for im, b in zip(parts, bases):
                 filename = f"taishi_{b}({current_series}).jpg"
                 zipf.writestr(filename, image_to_bytes(im))
 
-    # DLボタン
     st.download_button(
         label="⬇️ 一括ダウンロード（ZIP）",
         data=zip_buffer.getvalue(),
