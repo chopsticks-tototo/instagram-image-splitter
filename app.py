@@ -1,6 +1,6 @@
 import streamlit as st
 from PIL import Image, ImageOps
-import os
+import io
 
 st.set_page_config(page_title="Instagram用 画像3分割ツール", page_icon="🖼️", layout="wide")
 st.title("Instagram用 画像3分割ツール")
@@ -18,6 +18,11 @@ def split_h3_with_margin(img, margin=34, bg=(255,255,255)):
         outs.append(bordered)
     return outs
 
+def image_to_bytes(img):
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=95)
+    return buf.getvalue()
+
 uploaded_files = st.file_uploader("📷 画像をアップロード（複数可）", type=["jpg","jpeg","png","webp"], accept_multiple_files=True)
 series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
 base1 = st.text_input("左列の数字（半角）", value="1")
@@ -34,7 +39,7 @@ if uploaded_files:
             filename = f"taishi_{b}({current_series}).jpg"
             st.download_button(
                 label=f"⬇️ {filename} をダウンロード",
-                data=im_to_bytes := im.tobytes(),
+                data=image_to_bytes(im),
                 file_name=filename,
                 mime="image/jpeg"
             )
