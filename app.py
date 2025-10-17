@@ -4,8 +4,9 @@ import io
 
 st.set_page_config(page_title="Instagram用 画像3分割ツール", page_icon="🖼️", layout="wide")
 st.title("Instagram用 画像3分割ツール")
-st.caption("1枚の画像を3等分し、左右に余白を追加してダウンロードできます。")
+st.caption("複数枚対応：アップロード順に ( ) 内の数字を自動で増やす。ZIPなしで各画像をそのままダウンロード。")
 
+# 画像を横3分割し、左右に余白を追加
 def split_h3_with_margin(img, margin=34, bg=(255,255,255)):
     w, h = img.size
     seg_w = w // 3
@@ -18,28 +19,38 @@ def split_h3_with_margin(img, margin=34, bg=(255,255,255)):
         outs.append(bordered)
     return outs
 
+# 画像をJPEGバイト列へ
 def image_to_bytes(img):
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=95)
     return buf.getvalue()
 
-uploaded_files = st.file_uploader("📷 画像をアップロード（複数可）", type=["jpg","jpeg","png","webp"], accept_multiple_files=True)
+# 入力UI
+uploaded_files = st.file_uploader("📷 画像をアップロード（複数可：JPG/PNG/WebP）",
+                                  type=["jpg","jpeg","png","webp"], accept_multiple_files=True)
 series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
 base1 = st.text_input("左列の数字（半角）", value="1")
 base2 = st.text_input("中列の数字（半角）", value="2")
 base3 = st.text_input("右列の数字（半角）", value="3")
 
+# 処理＆DLボタン（ZIPなし）
 if uploaded_files:
     for i, up in enumerate(uploaded_files):
         img = Image.open(up).convert("RGB")
-        parts = split_h3_with_margin(img)
+        parts = split_h3_with_margin(img)  # 左中右の3枚
         current_series = series_start + i
+
         st.markdown(f"### {up.name} ➡️ ( )内の数字 {current_series}")
-        for im, b in zip(parts, [base1, base2, base3]):
+
+        cols = st.columns(3)
+        for im, b, col in zip(parts, [base1, base2, base3], cols):
             filename = f"taishi_{b}({current_series}).jpg"
-            st.download_button(
-                label=f"⬇️ {filename} をダウンロード",
-                data=image_to_bytes(im),
-                file_name=filename,
-                mime="image/jpeg"
-            )
+            with col:
+                # プレビューが不要なら次の行は消してOK
+                st.image(im, caption=filename, use_container_width=True)
+                st.download_button(
+                    label=f"⬇️ {filename}",
+                    data=image_to_bytes(im),
+                    file_name=filename,
+                    mime="image/jpeg"
+                )
