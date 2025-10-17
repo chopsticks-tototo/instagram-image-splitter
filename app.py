@@ -1,10 +1,10 @@
 import streamlit as st
 from PIL import Image, ImageOps
-import io
+import io, zipfile
 
 st.set_page_config(page_title="Instagram用 画像3分割ツール", page_icon="🖼️", layout="wide")
 st.title("Instagram用 画像3分割ツール")
-st.caption("複数枚対応：アップロード順に ( ) 内の数字を自動で増やす。ZIPなしで各画像をそのままダウンロード。")
+st.caption("複数枚対応：アップロード順に ( ) 内の数字を自動で増やす。3分割画像をZIPで一括ダウンロードできます。")
 
 # 画像を横3分割し、左右に余白を追加
 def split_h3_with_margin(img, margin=34, bg=(255,255,255)):
@@ -27,28 +27,4 @@ def image_to_bytes(img):
 
 # 入力UI
 uploaded_files = st.file_uploader("📷 画像をアップロード（複数可：JPG/PNG/WebP）",
-                                  type=["jpg","jpeg","png","webp"], accept_multiple_files=True)
-series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
-base1 = st.text_input("左列の数字（半角）", value="1")
-base2 = st.text_input("中列の数字（半角）", value="2")
-base3 = st.text_input("右列の数字（半角）", value="3")
-
-# 処理＆DLボタン（ZIPなし）
-if uploaded_files:
-    for i, up in enumerate(uploaded_files):
-        img = Image.open(up).convert("RGB")
-        parts = split_h3_with_margin(img)  # 左中右の3枚
-        current_series = series_start + i
-
-        st.markdown(f"### {up.name} ➡️ ( )内の数字 {current_series}")
-
-        cols = st.columns(3)
-        for im, b, col in zip(parts, [base1, base2, base3], cols):
-            filename = f"taishi_{b}({current_series}).jpg"
-            with col:
-                st.download_button(
-                    label=f"⬇️ {filename}",
-                    data=image_to_bytes(im),
-                    file_name=filename,
-                    mime="image/jpeg"
-                )
+                                  ty
