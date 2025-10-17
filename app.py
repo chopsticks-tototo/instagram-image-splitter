@@ -30,7 +30,6 @@ def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
                 top = r * seg_h
                 bottom = (r + 1) * seg_h if r < 1 else h
                 crop = img.crop((left, top, right, bottom))
-                # 左右だけ余白を追加（上下はなし）
                 bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
                 outs.append(bordered)
 
@@ -51,9 +50,25 @@ uploaded_files = st.file_uploader(
 
 split_mode = st.radio("分割方法を選択", ["横3分割（3x1）", "縦2×横3分割（3x2）"])
 series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
-base1 = st.text_input("左列の数字（半角）", value="1")
-base2 = st.text_input("中列の数字（半角）", value="2")
-base3 = st.text_input("右列の数字（半角）", value="3")
+
+# 分割パターンに応じた入力欄
+if "3x2" in split_mode:
+    cols = st.columns(3)
+    with cols[0]:
+        base1 = st.text_input("左上", value="1")
+        base4 = st.text_input("左下", value="4")
+    with cols[1]:
+        base2 = st.text_input("中央上", value="2")
+        base5 = st.text_input("中央下", value="5")
+    with cols[2]:
+        base3 = st.text_input("右上", value="3")
+        base6 = st.text_input("右下", value="6")
+    bases = [base1, base2, base3, base4, base5, base6]
+else:
+    base1 = st.text_input("左列の数字（半角）", value="1")
+    base2 = st.text_input("中列の数字（半角）", value="2")
+    base3 = st.text_input("右列の数字（半角）", value="3")
+    bases = [base1, base2, base3]
 
 # 処理とZIP作成
 if uploaded_files:
@@ -66,13 +81,6 @@ if uploaded_files:
             mode = "3x2" if "3x2" in split_mode else "3x1"
             parts = split_image(img, mode=mode)
             current_series = series_start + i
-
-            if mode == "3x1":
-                # 通常の3分割
-                bases = [base1, base2, base3]
-            else:
-                # 6分割は1〜6で自動ナンバリング
-                bases = [str(n) for n in range(1, 7)]
 
             for im, b in zip(parts, bases):
                 filename = f"taishi_{b}({current_series}).jpg"
