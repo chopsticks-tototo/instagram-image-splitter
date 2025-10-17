@@ -46,8 +46,6 @@ if uploaded_files:
         for im, b, col in zip(parts, [base1, base2, base3], cols):
             filename = f"taishi_{b}({current_series}).jpg"
             with col:
-                # プレビューが不要なら次の行は消してOK
-                st.image(im, caption=filename, use_container_width=True)
                 st.download_button(
                     label=f"⬇️ {filename}",
                     data=image_to_bytes(im),
