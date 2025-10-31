@@ -4,7 +4,21 @@ import io, zipfile
 
 st.set_page_config(page_title="Instagram用 画像分割ツール", page_icon="🖼️", layout="wide")
 st.title("Instagram用 画像分割ツール")
-st.caption("3分割・6分割・9分割を選び、ZIPで一括ダウンロードできます。")
+st.caption("3分割・6分割・9分割を選び、ZIPで一括ダウンロードできます。各ピースは縦そのまま・左右パディングで4:5に揃えます。")
+
+# ---- 4:5比率に合わせて左右だけ余白を足す（高さは不変）----
+def pad_to_ratio_4_5(img, bg=(255,255,255)):
+    w, h = img.size
+    target_w = int(round(h * 4 / 5))  # 横:縦 = 4:5
+
+    if w >= target_w:
+        # 既に4:5以上に横長（または同等）なら触らない（クロップはしない方針）
+        return img
+
+    pad_total = target_w - w
+    left = pad_total // 2
+    right = pad_total - left
+    return ImageOps.expand(img, border=(left, 0, right, 0), fill=bg)
 
 # 分割関数
 def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
@@ -17,6 +31,7 @@ def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
             left = i * seg_w
             right = (i + 1) * seg_w if i < 2 else w
             crop = img.crop((left, 0, right, h))
+            # 列間の見た目マージン（左右のみ）
             bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
             outs.append(bordered)
 
@@ -43,7 +58,6 @@ def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
                 top = r * seg_h
                 bottom = (r + 1) * seg_h if r < 2 else h
                 crop = img.crop((left, top, right, bottom))
-                # 横方向だけ余白を入れてグリッド連結感をキープ（既存仕様に合わせる）
                 bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
                 outs.append(bordered)
 
@@ -132,9 +146,13 @@ if uploaded_files:
             else:
                 mode = "3x1"
 
+            # 1) 分割（列間は左右のみマージン）
             parts = split_image(img, mode=mode)
-            current_series = series_start + i
 
+            # 2) 各ピースを「高さそのまま・左右だけ」で 4:5 に統一（= 横幅 h*4/5 へ）
+            parts = [pad_to_ratio_4_5(p, bg=(255,255,255)) for p in parts]
+
+            current_series = series_start + i
             for im, b in zip(parts, bases):
                 filename = f"taishi_{b}({current_series}).jpg"
                 zipf.writestr(filename, image_to_bytes(im))
@@ -146,4 +164,4 @@ if uploaded_files:
         mime="application/zip"
     )
 
-    st.success("✅ ZIP作成完了！クリックで一括ダウンロードできます。")
+    st.success("✅ 完了！各ピースは縦サイズ不変・左右パディングだけで4:5（横=縦×4/5）に揃えました。")
