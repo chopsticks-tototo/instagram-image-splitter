@@ -10,11 +10,8 @@ st.caption("3分割・6分割・9分割を選び、ZIPで一括ダウンロー�
 def pad_to_ratio_4_5(img, bg=(255,255,255)):
     w, h = img.size
     target_w = int(round(h * 4 / 5))  # 横:縦 = 4:5
-
     if w >= target_w:
-        # 既に4:5以上に横長（または同等）なら触らない（クロップはしない方針）
         return img
-
     pad_total = target_w - w
     left = pad_total // 2
     right = pad_total - left
@@ -31,7 +28,6 @@ def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
             left = i * seg_w
             right = (i + 1) * seg_w if i < 2 else w
             crop = img.crop((left, 0, right, h))
-            # 列間の見た目マージン（左右のみ）
             bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
             outs.append(bordered)
 
@@ -80,7 +76,11 @@ split_mode = st.radio(
     "分割方法を選択",
     ["横3分割（3x1）", "縦2×横3分割（3x2）", "縦3×横3分割（3x3）"]
 )
-series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
+
+# ▼ ここが追加：共通番号（かっこ内）を付けないオプション
+no_series_in_parentheses = st.checkbox("共通番号（かっこ内）を付けない", value=False)
+if not no_series_in_parentheses:
+    series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
 
 # 分割パターンに応じた入力欄
 if "3x2" in split_mode:
@@ -97,7 +97,6 @@ if "3x2" in split_mode:
     bases = [base1, base2, base3, base4, base5, base6]
 
 elif "3x3" in split_mode:
-    # 3行×3列の番号入力
     row1 = st.columns(3)
     with row1[0]:
         b1 = st.text_input("左上", value="1")
@@ -105,7 +104,6 @@ elif "3x3" in split_mode:
         b2 = st.text_input("中央上", value="2")
     with row1[2]:
         b3 = st.text_input("右上", value="3")
-
     row2 = st.columns(3)
     with row2[0]:
         b4 = st.text_input("左中", value="4")
@@ -113,7 +111,6 @@ elif "3x3" in split_mode:
         b5 = st.text_input("中央", value="5")
     with row2[2]:
         b6 = st.text_input("右中", value="6")
-
     row3 = st.columns(3)
     with row3[0]:
         b7 = st.text_input("左下", value="7")
@@ -121,7 +118,6 @@ elif "3x3" in split_mode:
         b8 = st.text_input("中央下", value="8")
     with row3[2]:
         b9 = st.text_input("右下", value="9")
-
     bases = [b1, b2, b3, b4, b5, b6, b7, b8, b9]
 
 else:
@@ -132,7 +128,6 @@ else:
 
 # 処理とZIP作成
 if uploaded_files:
-    # 数字を含むファイル名で昇順ソート（数字が無い場合は0扱い）
     uploaded_files = sorted(uploaded_files, key=lambda x: int(''.join(filter(str.isdigit, x.name)) or 0))
 
     zip_buffer = io.BytesIO()
@@ -152,9 +147,16 @@ if uploaded_files:
             # 2) 各ピースを「高さそのまま・左右だけ」で 4:5 に統一（= 横幅 h*4/5 へ）
             parts = [pad_to_ratio_4_5(p, bg=(255,255,255)) for p in parts]
 
-            current_series = series_start + i
+            # 3) 書き出しファイル名（共通番号を付けない設定に対応）
+            current_series = None if no_series_in_parentheses else (int(st.session_state.get("series_start_val", 0)) if False else None)
+            # ↑セッション使わないシンプル版でOKなので下で直接条件分岐:
+            current_series_num = (series_start + i) if not no_series_in_parentheses else None
+
             for im, b in zip(parts, bases):
-                filename = f"taishi_{b}({current_series}).jpg"
+                if current_series_num is None:
+                    filename = f"taishi_{b}.jpg"
+                else:
+                    filename = f"taishi_{b}({current_series_num}).jpg"
                 zipf.writestr(filename, image_to_bytes(im))
 
     st.download_button(
@@ -164,4 +166,4 @@ if uploaded_files:
         mime="application/zip"
     )
 
-    st.success("✅ 完了！各ピースは縦サイズ不変・左右パディングだけで4:5（横=縦×4/5）に揃えました。")
+    st.success("✅ 完了！4:5に整形＆ファイル名の()内共通番号の有無を切り替えました。")
