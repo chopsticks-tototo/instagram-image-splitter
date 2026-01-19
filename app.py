@@ -57,15 +57,15 @@ def split_image(img, mode="3x1", margin=34, bg=(255,255,255)):
                 bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
                 outs.append(bordered)
 
-    elif mode == "4x3":  # ★追加：縦3×横4（12分割）
-        seg_w = w // 4
-        seg_h = h // 3
-        for r in range(3):
-            for c in range(4):
+    elif mode == "3x4":  # 縦4×横3（12分割）
+        seg_w = w // 3
+        seg_h = h // 4
+        for r in range(4):
+            for c in range(3):
                 left = c * seg_w
-                right = (c + 1) * seg_w if c < 3 else w
+                right = (c + 1) * seg_w if c < 2 else w
                 top = r * seg_h
-                bottom = (r + 1) * seg_h if r < 2 else h
+                bottom = (r + 1) * seg_h if r < 3 else h
                 crop = img.crop((left, top, right, bottom))
                 bordered = ImageOps.expand(crop, border=(margin, 0, margin, 0), fill=bg)
                 outs.append(bordered)
@@ -87,10 +87,10 @@ uploaded_files = st.file_uploader(
 
 split_mode = st.radio(
     "分割方法を選択",
-    ["横3分割（3x1）", "縦2×横3分割（3x2）", "縦3×横3分割（3x3）", "縦3×横4分割（4x3）"]
+    ["横3分割（3x1）", "縦2×横3分割（3x2）", "縦3×横3分割（3x3）", "縦4×横3分割（3x4）"]
 )
 
-# ▼ 共通番号（かっこ内）を付けないオプション
+# ▼ ここが追加：共通番号（かっこ内）を付けないオプション
 no_series_in_parentheses = st.checkbox("共通番号（かっこ内）を付けない", value=False)
 if not no_series_in_parentheses:
     series_start = st.number_input("開始する共通の数字（かっこ内）", min_value=1, value=1)
@@ -133,37 +133,38 @@ elif "3x3" in split_mode:
         b9 = st.text_input("右下", value="9")
     bases = [b1, b2, b3, b4, b5, b6, b7, b8, b9]
 
-elif "4x3" in split_mode:
-    # ★追加：縦3×横4（12分割）入力欄（上段→中段→下段、左から右）
-    r1 = st.columns(4)
+elif "3x4" in split_mode:
+    r1 = st.columns(3)
     with r1[0]:
-        b1 = st.text_input("上段1（左上）", value="1")
+        b1 = st.text_input("1段目 左上", value="1")
     with r1[1]:
-        b2 = st.text_input("上段2", value="2")
+        b2 = st.text_input("1段目 中央", value="2")
     with r1[2]:
-        b3 = st.text_input("上段3", value="3")
-    with r1[3]:
-        b4 = st.text_input("上段4（右上）", value="4")
+        b3 = st.text_input("1段目 右上", value="3")
 
-    r2 = st.columns(4)
+    r2 = st.columns(3)
     with r2[0]:
-        b5 = st.text_input("中段1（左）", value="5")
+        b4 = st.text_input("2段目 左", value="4")
     with r2[1]:
-        b6 = st.text_input("中段2", value="6")
+        b5 = st.text_input("2段目 中央", value="5")
     with r2[2]:
-        b7 = st.text_input("中段3", value="7")
-    with r2[3]:
-        b8 = st.text_input("中段4（右）", value="8")
+        b6 = st.text_input("2段目 右", value="6")
 
-    r3 = st.columns(4)
+    r3 = st.columns(3)
     with r3[0]:
-        b9 = st.text_input("下段1（左下）", value="9")
+        b7 = st.text_input("3段目 左", value="7")
     with r3[1]:
-        b10 = st.text_input("下段2", value="10")
+        b8 = st.text_input("3段目 中央", value="8")
     with r3[2]:
-        b11 = st.text_input("下段3", value="11")
-    with r3[3]:
-        b12 = st.text_input("下段4（右下）", value="12")
+        b9 = st.text_input("3段目 右", value="9")
+
+    r4 = st.columns(3)
+    with r4[0]:
+        b10 = st.text_input("4段目 左下", value="10")
+    with r4[1]:
+        b11 = st.text_input("4段目 中央下", value="11")
+    with r4[2]:
+        b12 = st.text_input("4段目 右下", value="12")
 
     bases = [b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12]
 
@@ -181,13 +182,12 @@ if uploaded_files:
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_STORED) as zipf:
         for i, up in enumerate(uploaded_files):
             img = Image.open(up).convert("RGB")
-
             if "3x2" in split_mode:
                 mode = "3x2"
             elif "3x3" in split_mode:
                 mode = "3x3"
-            elif "4x3" in split_mode:
-                mode = "4x3"
+            elif "3x4" in split_mode:
+                mode = "3x4"
             else:
                 mode = "3x1"
 
